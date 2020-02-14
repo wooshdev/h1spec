@@ -23,7 +23,7 @@ public class Url {
 	/**
 	 * RFC 1738 Defines a seperate username and password, 
 	 * RFC 3986 doesn't, and since the latter is newer, 
-	 * I'll folow that spec.
+	 * I'll follow that spec.
 	 */
 	public string UserInfo;
 	public string Host;

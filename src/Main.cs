@@ -11,17 +11,38 @@ class MainClass {
 			Console.WriteLine("Add URL argument!");
 			return;
 		}
+		HttpClient client = new HttpClient();
+		
 		try {
 			Url url = new Url(args[0]);
-			Console.Write("Scheme: {0}\nUserInfo: {1}\nHost: {2}\nPath: {3}\nQuery: {4}\nFragment: {5}\n", 
-						  url.Scheme ?? "(null)", 
-						  url.UserInfo ?? "(null)", 
-						  url.Host ?? "(null)", 
-						  url.Path ?? "(null)", 
-						  url.Query ?? "(null)", 
-						  url.Fragment ??"(null)");
+			url.Scheme = url.Scheme.ToLower();
+			
+			int port;
+			bool secure;
+			if (url.Scheme == "http") {
+				port = 80;
+				secure = false;
+			} else if (url.Scheme == "https") {
+				port = 443;
+				secure = true;
+			} else {
+				Console.Write("Unknown scheme: '{0}'\n", url.Scheme);
+				return;
+			}
+
+			try {
+				client.Connect(url.Host, port, secure, url.Host);
+			} catch (Exception e) {
+				Console.WriteLine("Failed to connect to client.\n\tMessage: " + e.Message);
+			}
+			
+			TestManager.RunTests(client);
+			
 		} catch (Exception e) {
 			Console.WriteLine(e.ToString());
+
+			if (client != null)
+				try { client.Close(); } catch { }
 		}
 	}
 }

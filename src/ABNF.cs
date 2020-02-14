@@ -18,4 +18,7 @@ static class ABNF {
 	/* HEXDIG         =  DIGIT / "A" / "B" / "C" / "D" / "E" / "F" */
 	public static bool IsHexDig(uint c) => IsDigit(c) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66); 
 
+	/* VCHAR          =  %x21-7E */
+	public static bool IsVChar(uint c) => c >= 0x21 && c <= 0x7E;
+
 }
