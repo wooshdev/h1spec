@@ -125,11 +125,11 @@ public class Url {
 						/* maybe a pct-encoded? 
 						 * pct-encoded   = "%" HEXDIG HEXDIG
 						 */
-						if (c == '%' && IsHexDig(input[i+1]) && IsHexDig(input[i+2])) {
+						if (c == '%' && ABNF.IsHexDig(input[i+1]) && ABNF.IsHexDig(input[i+2])) {
 							i += 2;
 							continue;
 						} else {
-							Console.Write("Values: {0} {1} {2}\n", c == '%', IsHexDig(UserInfo[i+1]), IsHexDig(UserInfo[i+2]));
+							Console.Write("Values: {0} {1} {2}\n", c == '%', ABNF.IsHexDig(UserInfo[i+1]), ABNF.IsHexDig(UserInfo[i+2]));
 						}
 					}
 					return "character(s) '" + character + "' (position=" + i + ") is invalid!";
@@ -157,35 +157,28 @@ public class Url {
 			return false;
 		
 		if (s.Length == 1)
-			return IsDigit(s[0]);
+			return ABNF.IsDigit(s[0]);
 		
 		if (s.Length == 2)
-			return s[0] >= 0x31 && s[0] <= 0x39 && IsDigit(s[1]);
+			return s[0] >= 0x31 && s[0] <= 0x39 && ABNF.IsDigit(s[1]);
 		
 		if (s.Length == 3)
 			if (s[0] == '1')
-				return IsDigit(s[1]) && IsDigit(s[2]);
+				return ABNF.IsDigit(s[1]) && ABNF.IsDigit(s[2]);
 			else if (s[0] == '2')
 				if (s[1] == '5')
 					return s[2] >= 0x30 && s[2] <= 0x35;
 				else
-					return s[1] >= 0x30 && s[1] <= 0x34 && IsDigit(s[2]);
+					return s[1] >= 0x30 && s[1] <= 0x34 && ABNF.IsDigit(s[2]);
 		
 		
 		return false;
 	}
 
-	/* ALPHA          =  %x41-5A / %x61-7A   ; A-Z / a-z */
-	private bool IsAlpha(uint c) => (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A);
-
-	/* DIGIT       =  %x30-39 */
-	private bool IsDigit(uint c) => c >= 0x30 && c <= 0x39;
 	
-	/* HEXDIG         =  DIGIT / "A" / "B" / "C" / "D" / "E" / "F" */
-	private bool IsHexDig(uint c) => IsDigit(c) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66);
 	
 	/* unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~" */
-	private bool IsUnreserved(uint c) => IsAlpha(c) || IsDigit(c) || c == '-' || c == '.' || c == '_' || c == '~';
+	private bool IsUnreserved(uint c) => ABNF.IsAlpha(c) || ABNF.IsDigit(c) || c == '-' || c == '.' || c == '_' || c == '~';
 	
 	/* sub-delims  = "!" / "$" / "&" / "'" / "(" / ")"
 				   / "*" / "+" / "," / ";" / "=" */
@@ -197,10 +190,10 @@ public class Url {
 		for (int i = 0; i < Scheme.Length; i++) {
 			uint c = Scheme[i];
 			if (i == 0) {
-				if (!IsAlpha(c)) {
+				if (!ABNF.IsAlpha(c)) {
 					throw new UrlException(source, "schemes must start with an alphabethical character! (See RFC 3986 Section 3.1 and RFC 2234 Section 6.1)");
 				}
-			} else if (!IsAlpha(c) && !IsDigit(c) && c != '+' && c != '-' && c != '.') {
+			} else if (!ABNF.IsAlpha(c) && !ABNF.IsDigit(c) && c != '+' && c != '-' && c != '.') {
 				throw new UrlException(source, "invalid scheme! (See RFC 3986 Section 3.1 and RFC 2234 Section 6.1)");
 			}
 		}
