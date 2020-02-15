@@ -140,7 +140,7 @@ class HttpClient {
 	 */
 	public HttpResponse Request(string path, Dictionary<string, string> headers, byte[] body, string method="GET", string version="HTTP/1.1") {
 		/* Reconnect if necessary */
-		Connect(mHost, mPort, mSecure, HostName);
+		Reconnect();
 
 		var allHeaders = new Dictionary<string, string> {
 			{ "Accept", "*/*" },
@@ -172,6 +172,10 @@ class HttpClient {
 	private static void ThrowErrorStatusLine(string message, string source) => throw new HttpStandardException("Invalid status code: " + message + " (source=" + (source == null ? "null" : '"' + source + '"') + ')', "RFC 7230 Section 3.1.2.");
 	private static void ThrowErrorVersion(string message, string source) => throw new HttpStandardException("Invalid version: " + message + " (source=" + (source == null ? "null" : '"' + source + '"') + ')', "RFC 7230 Section 2.6.");
 	private static void ThrowErrorHeaderField(string message, string source) => throw new HttpStandardException("Invalid header field: " + message + " (source=" + (source == null ? "null" : '"' + source + '"') + ')', "RFC 7230 Section 3.2.");
+
+	private static string MaximumStringDot(string value, int maximumSize) {
+		return value.Length > maximumSize ? value.Substring(0, maximumSize) + "..." : value;
+	}
 	
 	private static void checkHTTPVersion(string version) {
 		if (version.Length != 8)
@@ -251,6 +255,13 @@ class HttpClient {
 				throw new IOException("Reader returned -1");
 		} while ((position += read) < length);
 	}
+	
+	private string ReadLine() {
+		string line = reader.ReadLine();
+		/* Debugging: */
+// 		Console.WriteLine("\tReader> \"{0}\"", line);
+		return line;
+	}
 
 	public HttpResponse ReadResponse(string method) {
 		HttpClientReadSection section = HttpClientReadSection.Initialization;
@@ -259,7 +270,7 @@ class HttpClient {
 		try {
 			section = HttpClientReadSection.StatusLine;
 			{
-				string statusLine = reader.ReadLine();
+				string statusLine = ReadLine();
 
 				if (statusLine == null)
 					ThrowErrorStatusLine("EOS reached.", statusLine);
@@ -273,7 +284,6 @@ class HttpClient {
 					checkHTTPStatusCode(parts[1]);
 					/* the reason-phrase SHOULD be ignored by the client. */
 				} catch (HttpStandardException e) {
-					Console.WriteLine("Invalid Status Line: \"" + statusLine + "\"");
 					throw e;
 				}
 
@@ -284,7 +294,7 @@ class HttpClient {
 			section = HttpClientReadSection.Headers;
 			{
 				string line;
-				while ((line = reader.ReadLine()) != null && line.Length > 0) {
+				while ((line = ReadLine()) != null && line.Length > 0) {
 					int colonIndex = line.IndexOf(':');
 					if (colonIndex == -1)
 						ThrowErrorHeaderField("there isn't a seperating COLON (':') character between the field-name and field-value", line);
@@ -316,6 +326,7 @@ class HttpClient {
 				}
 			}
 
+			#if ENABLED_BODY_READING
 			section = HttpClientReadSection.Body;
 			{
 				bool isHead = method == "HEAD";
@@ -350,8 +361,17 @@ class HttpClient {
 						} else if (sentTransferEncoding) {
 							response.Body = new char[0];
 							string line;
-							while ((line = reader.ReadLine()) != null) {
-								int length = (int) UInt32.Parse(line, NumberStyles.HexNumber);
+							while ((line = ReadLine()) != null) {
+								int length;
+								try {
+									length = (int) UInt32.Parse(line, NumberStyles.HexNumber);
+								} catch (Exception e) {
+									Console.WriteLine('"' + line + '"');
+									Console.WriteLine("te={0} trailers={1}", response.Headers["Transfer-Encoding"], response.Headers["Trailers"]);
+									while (true)
+										Console.WriteLine(" > '" + ReadLine() + '"');
+									throw e;
+								}
 								if (length == 0) {
 									/* Seek two octets (there isn't a smarter method for this) */
 									reader.Read();
@@ -365,6 +385,7 @@ class HttpClient {
 								/* Seek two octets (there isn't a smarter method for this) */
 								reader.Read();
 								reader.Read();
+								//Console.WriteLine("skipping: {0} {1}", (uint) reader.Read(), (uint) reader.Read());
 							}
 						} else {
 							Console.WriteLine("(DEBUG) Neither Content-Length nor Transfer-Encoding is set?");
@@ -375,6 +396,9 @@ class HttpClient {
 					Console.WriteLine("(DEBUG) No body sent.");
 				}
 			}
+			#else
+			Reconnect();
+			#endif
 		} catch (OutOfMemoryException) {
 			throw new HttpClientException("Out of memory! (Section: " + section + ")");
 		} catch (IOException) {
@@ -387,6 +411,11 @@ class HttpClient {
 		}
 
 		return response;
+	}
+
+	public void Reconnect() {
+		Close();
+		Connect(mHost, mPort, mSecure, HostName);
 	}
 
 	/**

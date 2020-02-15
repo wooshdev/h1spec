@@ -52,7 +52,7 @@ namespace Tests {
 					/* All responses are allowed (for now) */
 					return TestResult.Passed;
 				} catch (Exception e) {
-					return new TestResult(TestStatus.Error, e.ToString());
+					return new TestResult(TestStatus.Error, e.Message);
 				}
 			}
 		}
@@ -71,8 +71,7 @@ namespace Tests {
 
 					return response.StatusCode < 400 ? TestResult.Passed : new TestResult(TestStatus.NotSupported, "The server doesn't support the OPTIONS header, as the server sent response status: " + HttpStatuses.Format(response.StatusCode));
 				} catch (Exception e) {
-					Console.Write("== Failed ==\n\t{0}\n", e.ToString());
-					return new TestResult(TestStatus.Error, e.ToString());
+					return new TestResult(TestStatus.Error, e.Message);
 				}
 			}
 		}
@@ -96,8 +95,31 @@ namespace Tests {
 						return new TestResult(TestStatus.NonConformance, "The server has sent the status \"" + HttpStatuses.Format(response.StatusCode) + "\", when \"" + HttpStatuses.Format(400) + "\" or the better \"" + HttpStatuses.Format(505) + "\" status was expected.");
 
 				} catch (Exception e) {
-					Console.WriteLine(e.ToString());
-					return new TestResult(TestStatus.Error, e.ToString());
+					return new TestResult(TestStatus.Error, e.Message);
+				}
+			}
+		}
+
+		class FutureVersion : Test {
+
+			private static string Status500Formatted = HttpStatuses.Format(505);
+			private static TestResult Result400 = new TestResult(TestStatus.NonConformance, "The server has sent a status of \"" + HttpStatuses.Format(400) + "\", but a better fitting status is \"" + Status500Formatted + "\".");
+			public FutureVersion() : base("2.2", "Sending an newer (future) protocol version") {}
+			
+			public override TestResult Run(HttpClient client) {
+				try {
+					HttpResponse response = client.Request("/", null, null, "GET", "HTTP/1.2");
+
+					if (response.StatusCode == 505) /* 505 HTTP Version Not Supported */
+						return TestResult.Passed;
+					if (response.StatusCode == 400) /* 400 Bad Request */
+						return Result400;
+					if (response.StatusCode >= 300 && response.StatusCode <= 399)
+						return new TestResult(TestStatus.NonConformance, "The server has sent the status \"" + HttpStatuses.Format(response.StatusCode) + "\", to mitigate this problem, when it could've used the '" + Status500Formatted + "\" status.");
+					return new TestResult(TestStatus.NonConformance, "The server has sent the status \"" + HttpStatuses.Format(response.StatusCode) + "\", when \"" + HttpStatuses.Format(400) + "\" or the better \"" + Status500Formatted + "\" status was expected.");
+
+				} catch (Exception e) {
+					return new TestResult(TestStatus.Error, e.Message);
 				}
 			}
 		}
@@ -109,9 +131,10 @@ class TestManager {
 
 	public static void RunTests(HttpClient client) {
 		List<Test> tests = new List<Test>();
-		tests.Add(new Tests.MalformedRequests.InvalidVersion());
 		tests.Add(new Tests.Methods.Get());
 		tests.Add(new Tests.Methods.Options());
+		tests.Add(new Tests.MalformedRequests.InvalidVersion());
+		tests.Add(new Tests.MalformedRequests.FutureVersion());
 
 		foreach (Test test in tests) {
 			Console.Write("> \x1b[37mTest {0} \x1b[0m[\x1b[35m{1}\x1b[0m] ", test.Identifier, test.Name);

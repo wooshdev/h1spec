@@ -37,10 +37,9 @@ class MainClass {
 			}
 			
 			TestManager.RunTests(client);
-			
 		} catch (Exception e) {
 			Console.WriteLine(e.ToString());
-
+		} finally {
 			if (client != null)
 				try { client.Close(); } catch { }
 		}
