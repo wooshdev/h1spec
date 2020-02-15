@@ -169,6 +169,11 @@ class HttpClient {
 		return ReadResponse(method);
 	}
 	
+	public HttpResponse Request(byte[] data, string method) {
+		stream.Write(data, 0, data.Length);
+		return ReadResponse(method);
+	}
+	
 	private static void ThrowErrorStatusLine(string message, string source) => throw new HttpStandardException("Invalid status code: " + message + " (source=" + (source == null ? "null" : '"' + source + '"') + ')', "RFC 7230 Section 3.1.2.");
 	private static void ThrowErrorVersion(string message, string source) => throw new HttpStandardException("Invalid version: " + message + " (source=" + (source == null ? "null" : '"' + source + '"') + ')', "RFC 7230 Section 2.6.");
 	private static void ThrowErrorHeaderField(string message, string source) => throw new HttpStandardException("Invalid header field: " + message + " (source=" + (source == null ? "null" : '"' + source + '"') + ')', "RFC 7230 Section 3.2.");
@@ -396,8 +401,6 @@ class HttpClient {
 					Console.WriteLine("(DEBUG) No body sent.");
 				}
 			}
-			#else
-			Reconnect();
 			#endif
 		} catch (OutOfMemoryException) {
 			throw new HttpClientException("Out of memory! (Section: " + section + ")");

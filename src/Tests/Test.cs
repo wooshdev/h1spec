@@ -125,6 +125,41 @@ namespace Tests {
 		}
 	}
 
+	namespace Flexibility {
+		class HeaderWithOptionalSpaces : Test {
+
+			private static TestResult FailedResultMultipleSpaces = new TestResult(TestStatus.NonConformance, "The server doesn't allow multiple spaces before the header-value. (Not conforming to RFC 7230 Section 3.2)");
+			private static TestResult FailedResultNoOWS = new TestResult(TestStatus.NonConformance, "The server requires tabs/spaces after (header-name + ':'), white spaces are optional. (Not conforming to RFC 7230 Section 3.2)");
+			private static TestResult FailedResultTabs = new TestResult(TestStatus.NonConformance, "The server doesn't allow tabs before the header-value. (Not conforming to RFC 7230 Section 3.2)");
+			public HeaderWithOptionalSpaces() : base("3.1", "OWS before header value") {}
+			
+			public override TestResult Run(HttpClient client) {
+				try {
+					Dictionary<string, string> headers = new Dictionary<string, string> {
+						{ "Connection", "     keep-alive" }
+					};
+					HttpResponse response = client.Request(Settings.GeneralPath, headers);
+
+					if (response.StatusCode == 400)
+						return FailedResultMultipleSpaces;
+
+					client.Reconnect();
+					response = client.Request(System.Text.Encoding.UTF8.GetBytes("GET " + Settings.GeneralPath + " HTTP/1.1\r\nAccept:*/*\r\nHost:" + client.HostName + "\r\nConnection:close\r\n\r\n"), "GET");
+					if (response.StatusCode == 400)
+						return FailedResultNoOWS;
+
+					client.Reconnect();
+					response = client.Request(System.Text.Encoding.UTF8.GetBytes("GET " + Settings.GeneralPath + " HTTP/1.1\r\nAccept:\t*/*\r\nHost:\t" + client.HostName + "\r\nConnection:\tclose\r\n\r\n"), "GET");
+					if (response.StatusCode == 400)
+						return FailedResultTabs;
+
+					return TestResult.Passed;
+				} catch (Exception e) {
+					return new TestResult(TestStatus.Error, e.Message);
+				}
+			}
+		}
+	}
 }
 
 class TestManager {
@@ -150,6 +185,7 @@ class TestManager {
 		tests.Add(new Tests.Methods.Options());
 		tests.Add(new Tests.MalformedRequests.InvalidVersion());
 		tests.Add(new Tests.MalformedRequests.FutureVersion());
+		tests.Add(new Tests.Flexibility.HeaderWithOptionalSpaces());
 
 		uint score = 0;
 		DateTime startTime = DateTime.Now;
@@ -163,6 +199,7 @@ class TestManager {
 			} else {
 				Console.WriteLine("\x1b[32mpassed\x1b[0m.");
 			}
+			client.Reconnect();
 		}
 
 		Console.Write("\n\x1b[35m==================================\n\x1b\x1b[34mTime:           \x1b[33m{0}\n\x1b[34mTest Count:     \x1b[33m{1}\n\x1b[34mPassed Tests:   \x1b[33m{2}\n\x1b[34mScore:          \x1b[33m{3}%\x1b[0m\n", FormatTimeSpan(DateTime.Now-startTime), tests.Count, score, ((int)(((double)score / tests.Count) * 10000))/100.0);
