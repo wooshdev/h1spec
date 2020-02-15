@@ -345,13 +345,11 @@ class HttpClient {
 							if (ulength > Int32.MaxValue)
 								throw new Exception("ulength > int32 max (value=" + ulength + ")");
 							int length = (int) ulength;
-							Console.WriteLine("content-length=" + length);
 							response.Body = new char[length];
 							readToResponse(response, length, 0);
 						} else if (sentTransferEncoding) {
 							response.Body = new char[0];
 							string line;
-							Console.WriteLine("chunked");
 							while ((line = reader.ReadLine()) != null) {
 								int length = (int) UInt32.Parse(line, NumberStyles.HexNumber);
 								if (length == 0) {
