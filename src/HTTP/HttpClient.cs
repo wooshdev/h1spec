@@ -138,7 +138,7 @@ class HttpClient {
 	/**
 	 * Makes a request to the server.
 	 */
-	public HttpResponse Request(string path, Dictionary<string, string> headers, byte[] body, string method="GET") {
+	public HttpResponse Request(string path, Dictionary<string, string> headers, byte[] body, string method="GET", string version="HTTP/1.1") {
 		/* Reconnect if necessary */
 		Connect(mHost, mPort, mSecure, HostName);
 
@@ -157,7 +157,7 @@ class HttpClient {
 			}
 		}
 
-		string requestString = method + ' ' + path + " HTTP/1.1\r\n";
+		string requestString = method + ' ' + path + ' ' + version + "\r\n";
 		foreach (KeyValuePair<string, string> entry in allHeaders) {
 			requestString += entry.Key + ": " + entry.Value + "\r\n";
 		}
@@ -341,16 +341,17 @@ class HttpClient {
 				if (sentPayloadLength) {
 					if (!isHead) {
 						if (sentContentLength) {
-							/* TODO doesn't support Transfer-Encoding yet! */
 							uint ulength = Convert.ToUInt32(response.Headers["Content-Length"]);
 							if (ulength > Int32.MaxValue)
 								throw new Exception("ulength > int32 max (value=" + ulength + ")");
 							int length = (int) ulength;
+							Console.WriteLine("content-length=" + length);
 							response.Body = new char[length];
 							readToResponse(response, length, 0);
 						} else if (sentTransferEncoding) {
 							response.Body = new char[0];
 							string line;
+							Console.WriteLine("chunked");
 							while ((line = reader.ReadLine()) != null) {
 								int length = (int) UInt32.Parse(line, NumberStyles.HexNumber);
 								if (length == 0) {

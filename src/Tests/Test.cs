@@ -22,11 +22,10 @@ abstract class Test {
 namespace Tests {
 
 	/* Method Section */
-	namespace MethodSection {
-
+	namespace Methods {
 		class Get : Test {
 			
-			public Get() : base("1.1", "GET '/'") {}
+			public Get() : base("1.1", "Testing method GET") {}
 			
 			public override bool Run(HttpClient client) {
 				try {
@@ -42,7 +41,7 @@ namespace Tests {
 
 		class Options : Test {
 
-			public Options() : base("1.2", "OPTIONS") {}
+			public Options() : base("1.2", "Testing method OPTIONS") {}
 
 			public override bool Run(HttpClient client) {
 				try {
@@ -61,14 +60,34 @@ namespace Tests {
 		}
 	}
 
+	namespace MalformedRequests {
+		class InvalidVersion : Test {
+			
+			public InvalidVersion() : base("2.1", "Sending an invalid protocol version") {}
+			
+			public override bool Run(HttpClient client) {
+				try {
+					HttpResponse response = client.Request("/", null, null, "GET", "ABCD/1.1");
+					Console.WriteLine("Status Code: " + response.StatusCode);
+				} catch (Exception e) {
+					Console.WriteLine(e.ToString());
+					return false;
+				}
+				
+				return true;
+			}
+		}
+	}
+
 }
 
 class TestManager {
 
 	public static void RunTests(HttpClient client) {
 		List<Test> tests = new List<Test>();
-		tests.Add(new Tests.MethodSection.Get());
-		tests.Add(new Tests.MethodSection.Options());
+		tests.Add(new Tests.MalformedRequests.InvalidVersion());
+		tests.Add(new Tests.Methods.Get());
+		tests.Add(new Tests.Methods.Options());
 
 		foreach (Test test in tests) {
 			Console.Write("> \x1b[37mTest {0} \x1b[0m[\x1b[35m{1}\x1b[0m] ", test.Identifier, test.Name);
