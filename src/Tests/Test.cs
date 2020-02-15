@@ -22,7 +22,7 @@ abstract class Test {
 namespace Tests {
 
 	/* Method Section */
-	namespace Section1 {
+	namespace MethodSection {
 
 		class Get : Test {
 			
@@ -40,14 +40,23 @@ namespace Tests {
 			}
 		}
 
-		class HeadA : Test {
-			
-			public HeadA() : base("1.2", "HEAD Test A") {}
-			
+		class Options : Test {
+
+			public Options() : base("1.2", "OPTIONS") {}
+
 			public override bool Run(HttpClient client) {
-				
-				
-				return true;
+				try {
+					HttpResponse response = client.Request("*", null, null, "OPTIONS");
+
+					/*foreach (string name in response.Headers.Names) {
+						Console.Write("\tHeader> '{0}' => '{1}'\n", name, response.Headers[name]);
+					}*/
+
+					return response.StatusCode < 400;
+				} catch (Exception e) {
+					Console.Write("== Failed ==\n\t{0}\n", e.ToString());
+					return false;
+				}
 			}
 		}
 	}
@@ -58,13 +67,15 @@ class TestManager {
 
 	public static void RunTests(HttpClient client) {
 		List<Test> tests = new List<Test>();
-		tests.Add(new Tests.Section1.Get());
+		tests.Add(new Tests.MethodSection.Get());
+		tests.Add(new Tests.MethodSection.Options());
 
 		foreach (Test test in tests) {
+			Console.Write("> \x1b[37mTest {0} \x1b[0m[\x1b[35m{1}\x1b[0m] ", test.Identifier, test.Name);
 			if (!test.Run(client)) {
-				Console.WriteLine("> Failed {0} ({1})\n", test.Name, test.Identifier);
+				Console.WriteLine("\x1b[31mfailed\x1b[0m.");
 			} else {
-				Console.Write("> Test {0} (\"{1}\") passed.\n", test.Identifier, test.Name);
+				Console.WriteLine("\x1b[32mpassed\x1b[0m.");
 			}
 		}
 	}

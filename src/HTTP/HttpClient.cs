@@ -47,6 +47,10 @@ class HttpClient {
 	private StreamReader reader;
 	public string HostName { get; private set; }
 
+	private string mHost;
+	private int mPort;
+	private bool mSecure;
+
 	/**
 	 * Tries to establish a connection to a server.
 	 *
@@ -69,9 +73,13 @@ class HttpClient {
 			return null;
 
 		HostName = hostName;
+		mHost = host;
+		mPort = port;
+		mSecure = secure;
 
 		try {
 			tcpClient = new TcpClient(host, port);
+			tcpClient.ReceiveTimeout = Settings.ReadTimeout;
 			stream = tcpClient.GetStream();
 		} catch (Exception e) {
 			try { tcpClient.Close(); } catch { }
@@ -131,9 +139,33 @@ class HttpClient {
 	 * Makes a request to the server.
 	 */
 	public HttpResponse Request(string path, Dictionary<string, string> headers, byte[] body, string method="GET") {
-		byte[] request = Encoding.UTF8.GetBytes(method + " " + path + " HTTP/1.1\r\nAccept: */*\r\nHost: " + HostName + "\r\nConnection: keep-alive\r\n\r\n");
+		/* Reconnect if necessary */
+		Connect(mHost, mPort, mSecure, HostName);
+
+		var allHeaders = new Dictionary<string, string> {
+			{ "Accept", "*/*" },
+			{ "Host", HostName },
+			{ "Connection", "keep-alive" }
+		};
+
+		if (headers != null) {
+			foreach (KeyValuePair<string, string> entry in headers) {
+				if (allHeaders.ContainsKey(entry.Key))
+					allHeaders[entry.Key] = entry.Value;
+				else
+					allHeaders.Add(entry.Key, entry.Value);
+			}
+		}
+
+		string requestString = method + ' ' + path + " HTTP/1.1\r\n";
+		foreach (KeyValuePair<string, string> entry in allHeaders) {
+			requestString += entry.Key + ": " + entry.Value + "\r\n";
+		}
+		requestString += "\r\n";
+
+		byte[] request = Encoding.UTF8.GetBytes(requestString);
 		stream.Write(request, 0, request.Length);
-		
+
 		return ReadResponse(method);
 	}
 	
@@ -314,7 +346,6 @@ class HttpClient {
 							if (ulength > Int32.MaxValue)
 								throw new Exception("ulength > int32 max (value=" + ulength + ")");
 							int length = (int) ulength;
-							Console.Write("(DEBUG) Reading {0} octets.\n", length);
 							response.Body = new char[length];
 							readToResponse(response, length, 0);
 						} else if (sentTransferEncoding) {
@@ -348,7 +379,12 @@ class HttpClient {
 		} catch (OutOfMemoryException) {
 			throw new HttpClientException("Out of memory! (Section: " + section + ")");
 		} catch (IOException) {
+			Close();
 			throw new HttpClientException("Connection lost. (Section: " + section + ")");
+		}
+		
+		if (!response.Headers.ContainsKey("Connection") || "close".Equals(response.Headers["Connection"], StringComparison.OrdinalIgnoreCase)) {
+			Close();
 		}
 
 		return response;
