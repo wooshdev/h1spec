@@ -16,6 +16,7 @@ class MainClass {
 		try {
 			Url url = new Url(args[0]);
 			url.Scheme = url.Scheme.ToLower();
+			Settings.GeneralPath = url.CombinedPath;
 			
 			int port;
 			bool secure;

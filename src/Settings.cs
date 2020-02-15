@@ -5,4 +5,5 @@
 public static class Settings {
 
 	public static int ReadTimeout = 1500; // In milliseconds
+	public static string GeneralPath = null;
 }

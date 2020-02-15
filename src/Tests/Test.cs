@@ -48,7 +48,7 @@ namespace Tests {
 			
 			public override TestResult Run(HttpClient client) {
 				try {
-					client.Request("/");
+					client.Request(Settings.GeneralPath);
 					/* All responses are allowed (for now) */
 					return TestResult.Passed;
 				} catch (Exception e) {
@@ -85,7 +85,7 @@ namespace Tests {
 			
 			public override TestResult Run(HttpClient client) {
 				try {
-					HttpResponse response = client.Request("/", null, null, "GET", "ABCD/1.1");
+					HttpResponse response = client.Request(Settings.GeneralPath, null, null, "GET", "ABCD/1.1");
 
 					if (response.StatusCode == 505) /* 505 HTTP Version Not Supported */
 						return TestResult.Passed;
@@ -108,7 +108,7 @@ namespace Tests {
 			
 			public override TestResult Run(HttpClient client) {
 				try {
-					HttpResponse response = client.Request("/", null, null, "GET", "HTTP/1.2");
+					HttpResponse response = client.Request(Settings.GeneralPath, null, null, "GET", "HTTP/1.2");
 
 					if (response.StatusCode == 505) /* 505 HTTP Version Not Supported */
 						return TestResult.Passed;
@@ -129,6 +129,21 @@ namespace Tests {
 
 class TestManager {
 
+	private static string FormatTimeSpan(TimeSpan span) {
+		string result = "";
+		if (span.Days > 0)
+			result = span.Days + " days(!) ";
+		if (span.Hours > 0)
+			result += span.Hours + " hours ";
+		if (span.Minutes > 0)
+			result += span.Minutes + " minutes ";
+		if (span.Seconds > 0)
+			result += span.Seconds + " seconds ";
+		if (span.Milliseconds > 0)
+			result += span.Milliseconds + " ms";
+		return result;
+	}
+	
 	public static void RunTests(HttpClient client) {
 		List<Test> tests = new List<Test>();
 		tests.Add(new Tests.Methods.Get());
@@ -136,14 +151,20 @@ class TestManager {
 		tests.Add(new Tests.MalformedRequests.InvalidVersion());
 		tests.Add(new Tests.MalformedRequests.FutureVersion());
 
+		uint score = 0;
+		DateTime startTime = DateTime.Now;
+
 		foreach (Test test in tests) {
 			Console.Write("> \x1b[37mTest {0} \x1b[0m[\x1b[35m{1}\x1b[0m] ", test.Identifier, test.Name);
 			TestResult result = test.Run(client);
 			if (result.Status != TestStatus.Passed) {
 				Console.WriteLine("\x1b[31mfailed\x1b[0m.\n\t>>> ({0}) {1}", result.Status, result.Message);
+				score += 1;
 			} else {
 				Console.WriteLine("\x1b[32mpassed\x1b[0m.");
 			}
 		}
+
+		Console.Write("\n\x1b[35m==================================\n\x1b\x1b[34mTime:           \x1b[33m{0}\n\x1b[34mTest Count:     \x1b[33m{1}\n\x1b[34mPassed Tests:   \x1b[33m{2}\n\x1b[34mScore:          \x1b[33m{3}%\x1b[0m\n", FormatTimeSpan(DateTime.Now-startTime), tests.Count, score, ((int)(((double)score / tests.Count) * 10000))/100.0);
 	}
 }
