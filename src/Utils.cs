@@ -20,7 +20,7 @@ class HttpStatus {
 		Code = code;
 		Message = message;
 		RFC = rfc;
-		Section = section == null ? ", Section " + section : "";
+		Section = section == null ? "" : ", Section " + section;
 		Info = info;
 	}
 
@@ -28,9 +28,35 @@ class HttpStatus {
 
 static class HttpStatuses {
 
-	public static HttpStatus Get(ushort code) {
-		return null;
+	static HttpStatuses() {
+		foreach (HttpStatus status in Statuses) {
+			StatusesMap.Add(status.Code, status);
+		}
 	}
+
+	public static HttpStatus Get(ushort code) {
+		HttpStatus status;
+		return StatusesMap.TryGetValue(code, out status) ? status : null;
+	}
+
+	public static string Format(ushort code) {
+		HttpStatus status = Get(code);
+		if (status == null)
+			return code + " (Unknown)";
+		else {
+			string format = code + " " + status.Message;
+
+			if (status.RFC != 0)
+				format += " [RFC " + status.RFC + status.Section + "]";
+
+			if (status.Info != HttpStatusInfo.None)
+				format += " (" + status.Info + ")";
+
+			return format;
+		}
+	}
+
+	private static Dictionary<ulong, HttpStatus> StatusesMap = new Dictionary<ulong, HttpStatus>();
 
 	/* See https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml */
 	public static List<HttpStatus> Statuses = new List<HttpStatus> {
@@ -39,6 +65,7 @@ static class HttpStatuses {
 		new HttpStatus(101, "Switching Protocols", 7231, "6.2.2"),
 		new HttpStatus(102, "Processing", 2518, "10.1", HttpStatusInfo.Obsolete),
 		new HttpStatus(103, "Early Hints", 8297, "2"),
+
 		/* 2×× Success */
 		new HttpStatus(200, "OK", 7231, "6.3.1"),
 		new HttpStatus(201, "Created", 7231, "6.3.2"),
@@ -50,6 +77,7 @@ static class HttpStatuses {
 		new HttpStatus(207, "Multi-Status", 4918, "11.1"),
 		new HttpStatus(208, "Already Reported", 5842, "7.1"),
 		new HttpStatus(226, "IM Used", 3229, "10.4.1"),
+
 		/* 3×× Redirection */
 		new HttpStatus(300, "Multiple Choices", 7231, "6.4.1"),
 		new HttpStatus(301, "Moved Permanently", 7231, "6.4.2"),
@@ -60,6 +88,7 @@ static class HttpStatuses {
 		new HttpStatus(306, "(Unused)", 7231, "6.4.6", HttpStatusInfo.Unused),
 		new HttpStatus(307, "Temporary Redirect", 7231, "6.4.7"),
 		new HttpStatus(308, "Permanent Redirect", 7238, "3"),
+
 		/* 4×× Client Error */
 		new HttpStatus(400, "Bad Request", 7231, "6.5.1"),
 		new HttpStatus(401, "Unauthorized", 7235, "3.1"),
@@ -89,6 +118,7 @@ static class HttpStatuses {
 		new HttpStatus(429, "Too Many Requests", 6585, "4"),
 		new HttpStatus(431, "Request Header Fields Too Large", 6585, "5"),
 		new HttpStatus(451, "Unavailable For Legal Reasons", 7725, "3"),
+
 		/* 5×× Server Error */
 		new HttpStatus(500, "Internal Server Error", 7231, "6.6.1"),
 		new HttpStatus(501, "Not Implemented", 7231, "6.6.2"),
